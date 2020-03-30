@@ -10,7 +10,8 @@ from __future__ import unicode_literals
 import math
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 
 
 class MLP:
@@ -66,7 +67,7 @@ class CNN:
 
 
 class LeNetSmall(CNN):
-    def __init__(self, flag_train, hps):
+    def __init__(self, flag_train, hps, dataset):
         """
         Difference: no shared biases, conv with stride instead of avg pool
         :param flag_train:
@@ -76,6 +77,7 @@ class LeNetSmall(CNN):
         self.n_filters = [16, 32]
         self.strides = [2, 2]
         self.padding = 'SAME'
+        self.dataset = dataset
         n_fc_hidden = 100
 
         conv_sizes = [4, 4]
@@ -100,19 +102,26 @@ class LeNetSmall(CNN):
         self.b = b
 
     def net(self, x):
-        y_list = []
 
+        if self.dataset == "mnist" or self.dataset == "fmnist":
+            x = tf.reshape(x, (1,28,28,1))
+        else:
+            x = tf.reshape(x, (1,32,32,3))
+
+        y_list = []
+        y_list.append(x)
         for i in range(2):
             x = tf.nn.conv2d(x, self.W[i], strides=[1, self.strides[i], self.strides[i], 1], padding=self.padding) + self.b[i]  # bs x 12 x 12 x 16
             y_list.append(x)
             x = self.activation(x)
+            y_list.append(x)
 
         x = tf.reshape(x, [-1, int(x.shape[1] * x.shape[2] * x.shape[3])])  # bs x 4*4*32
         x = x @ self.W[2] + self.b[2]
         y_list.append(x)
         x = self.activation(x)
+        y_list.append(x)
 
         logits = x @ self.W[3] + self.b[3]
         y_list.append(logits)
         return y_list
-
