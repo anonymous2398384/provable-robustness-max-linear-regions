@@ -127,26 +127,34 @@ class LeNetSmall(CNN):
         y_list.append(logits)
         return y_list
 
-def load_le_net_model(sess, args, model_path):
+def load_model(sess, args, model_path):
     
     _input = tf.placeholder(tf.float32, (1 , args.height, args.width, args.n_col))
     input_expanded = tf.expand_dims(_input, axis=0)
     
-    model = LeNetSmall(False, args, args.dataset)
+    if args.nn_type=="cnn":
+        model = LeNetSmall(False, args, args.dataset)
+    else:
+        model = MLP(False, hps)
+
     _logits = model.net(input_expanded)[-1]
     _activations = model.net(input_expanded)
 
     param_file = io.loadmat(model_path)
 
-    weight_names = ['weights_conv1', 'weights_conv2', 'weights_fc1', 'weights_fc2']
-    bias_names = ['biases_conv1', 'biases_conv2', 'biases_fc1', 'biases_fc2']
-
+    if args.nn_type=="cnn":
+        weight_names = ['weights_conv1', 'weights_conv2', 'weights_fc1', 'weights_fc2']
+        bias_names = ['biases_conv1', 'biases_conv2', 'biases_fc1', 'biases_fc2']
+    else:
+        weight_names = ['U', 'W']
+        bias_names = ['bU', 'bW']
 
     for var_tf, var_name_mat in zip(model.W, weight_names):
         var_tf.load(param_file[var_name_mat], sess)
     for var_tf, var_name_mat in zip(model.b, bias_names):
         bias_val = param_file[var_name_mat]
-        bias_val = bias_val.flatten()
+        if args.nn_type=="cnn":
+            bias_val = bias_val.flatten()
         var_tf.load(bias_val, sess)
             
     return model, _input, _logits, _activations
