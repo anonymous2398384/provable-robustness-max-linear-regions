@@ -10,6 +10,7 @@ from __future__ import unicode_literals
 import math
 
 import numpy as np
+import scipy.io as io
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
 
@@ -125,3 +126,27 @@ class LeNetSmall(CNN):
         logits = x @ self.W[3] + self.b[3]
         y_list.append(logits)
         return y_list
+
+def load_le_net_model(sess, args, model_path):
+    
+    _input = tf.placeholder(tf.float32, (1 , args.height, args.width, args.n_col))
+    input_expanded = tf.expand_dims(_input, axis=0)
+    
+    model = LeNetSmall(False, args, args.dataset)
+    _logits = model.net(input_expanded)[-1]
+    _activations = model.net(input_expanded)
+
+    param_file = io.loadmat(model_path)
+
+    weight_names = ['weights_conv1', 'weights_conv2', 'weights_fc1', 'weights_fc2']
+    bias_names = ['biases_conv1', 'biases_conv2', 'biases_fc1', 'biases_fc2']
+
+
+    for var_tf, var_name_mat in zip(model.W, weight_names):
+        var_tf.load(param_file[var_name_mat], sess)
+    for var_tf, var_name_mat in zip(model.b, bias_names):
+        bias_val = param_file[var_name_mat]
+        bias_val = bias_val.flatten()
+        var_tf.load(bias_val, sess)
+            
+    return model, _input, _logits, _activations
